@@ -1,0 +1,88 @@
+-- Updated RCA Query using embedded thresholds from JSON
+WITH incident_window AS (
+  SELECT '2025-06-15 10:00:00'::timestamp as start_time,
+         '2025-06-15 11:00:00'::timestamp as end_time
+),
+
+rds_metrics AS (
+  SELECT 
+    r.value:collection_timestamp::timestamp as timestamp,
+    r.value:product::string as rds_cluster,
+    r.value:metrics:select_latency:value::float as select_latency_ms,
+    r.value:metrics:select_latency:threshold_warning::float as select_latency_warn,
+    r.value:metrics:select_latency:threshold_critical::float as select_latency_crit,
+    r.value:metrics:cpu_utilization:value::float as cpu_utilization,
+    r.value:metrics:cpu_utilization:threshold_warning::float as cpu_warn,
+    r.value:metrics:cpu_utilization:threshold_critical::float as cpu_crit,
+    r.value:metrics:database_connections:value::int as db_connections,
+    r.value:metrics:database_connections:threshold_warning::int as conn_warn,
+    r.value:metrics:database_connections:threshold_critical::int as conn_crit,
+    -- Dynamic status calculation using embedded thresholds
+    CASE 
+      WHEN r.value:metrics:select_latency:value::float > r.value:metrics:select_latency:threshold_critical::float THEN 'CRITICAL'
+      WHEN r.value:metrics:select_latency:value::float > r.value:metrics:select_latency:threshold_warning::float THEN 'WARNING'
+      ELSE 'NORMAL'
+    END as select_latency_status,
+    CASE 
+      WHEN r.value:metrics:cpu_utilization:value::float > r.value:metrics:cpu_utilization:threshold_critical::float THEN 'CRITICAL'
+      WHEN r.value:metrics:cpu_utilization:value::float > r.value:metrics:cpu_utilization:threshold_warning::float THEN 'WARNING'
+      ELSE 'NORMAL'
+    END as cpu_status
+  FROM metrics_table m,
+       LATERAL FLATTEN(input => m.readings) r,
+       incident_window iw
+  WHERE m.service = 'rds'
+    AND m.date = '2025-06-15'
+    AND r.value:collection_timestamp::timestamp BETWEEN iw.start_time AND iw.end_time
+),
+
+sqs_metrics AS (
+  SELECT 
+    r.value:collection_timestamp::timestamp as timestamp,
+    r.value:product::string as sqs_queue,
+    r.value:metrics:approximate_age_of_oldest_message:value::int as oldest_message_age_sec,
+    r.value:metrics:approximate_age_of_oldest_message:threshold_critical::int as msg_age_crit,
+    r.value:metrics:approximate_number_of_messages_visible:value::int as messages_visible,
+    r.value:metrics:approximate_number_of_messages_visible:threshold_critical::int as queue_size_crit,
+    -- Dynamic status using embedded thresholds
+    CASE 
+      WHEN r.value:metrics:approximate_age_of_oldest_message:value::int > r.value:metrics:approximate_age_of_oldest_message:threshold_critical::int THEN 'CRITICAL'
+      WHEN r.value:metrics:approximate_age_of_oldest_message:value::int > r.value:metrics:approximate_age_of_oldest_message:threshold_warning::int THEN 'WARNING'
+      ELSE 'NORMAL'
+    END as message_age_status,
+    CASE 
+      WHEN r.value:metrics:approximate_number_of_messages_visible:value::int > r.value:metrics:approximate_number_of_messages_visible:threshold_critical::int THEN 'CRITICAL'
+      WHEN r.value:metrics:approximate_number_of_messages_visible:value::int > r.value:metrics:approximate_number_of_messages_visible:threshold_warning::int THEN 'WARNING'
+      ELSE 'NORMAL'
+    END as queue_backlog_status
+  FROM metrics_table m,
+       LATERAL FLATTEN(input => m.readings) r,
+       incident_window iw
+  WHERE m.service = 'sqs'
+    AND m.date = '2025-06-15'
+    AND r.value:collection_timestamp::timestamp BETWEEN iw.start_time AND iw.end_time
+)
+
+SELECT 
+  COALESCE(rds.timestamp, sqs.timestamp) as analysis_timestamp,
+  rds.select_latency_ms,
+  rds.select_latency_crit as latency_threshold,
+  rds.cpu_utilization,
+  rds.select_latency_status,
+  rds.cpu_status,
+  sqs.oldest_message_age_sec,
+  sqs.msg_age_crit as msg_age_threshold,
+  sqs.messages_visible,
+  sqs.queue_size_crit as queue_threshold,
+  sqs.message_age_status,
+  sqs.queue_backlog_status,
+  -- Breach calculations
+  ROUND(((rds.select_latency_ms - rds.select_latency_crit) / rds.select_latency_crit) * 100, 1) as latency_breach_pct,
+  ROUND(((sqs.messages_visible - sqs.queue_size_crit) / sqs.queue_size_crit) * 100, 1) as queue_breach_pct
+FROM rds_metrics rds
+FULL OUTER JOIN sqs_metrics sqs ON rds.timestamp = sqs.timestamp
+WHERE rds.select_latency_status != 'NORMAL' 
+   OR rds.cpu_status != 'NORMAL'
+   OR sqs.message_age_status != 'NORMAL' 
+   OR sqs.queue_backlog_status != 'NORMAL'
+ORDER BY analysis_timestamp;

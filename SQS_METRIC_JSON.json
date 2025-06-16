@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "service": "sqs",
+  "date": "2025-06-15",
+  "environment": "prod",
+  "readings": [
+    {
+      "collection_timestamp": "2025-06-15T10:00:00Z",
+      "product": "107923-ecdp-1079213-lrss-v2-job-notification-prod",
+      "metrics": {
+        "approximate_age_of_oldest_message": {
+          "value": 45,
+          "unit": "seconds",
+          "threshold_warning": 300,
+          "threshold_critical": 600
+        },
+        "approximate_number_of_messages_visible": {
+          "value": 156,
+          "unit": "count",
+          "threshold_warning": 500,
+          "threshold_critical": 1000
+        },
+        "approximate_number_of_messages_not_visible": {
+          "value": 12,
+          "unit": "count",
+          "threshold_warning": 100,
+          "threshold_critical": 200
+        }
+      }
+    },
+    {
+      "collection_timestamp": "2025-06-15T10:15:00Z",
+      "product": "107923-ecdp-1079213-lrss-v2-job-notification-prod",
+      "metrics": {
+        "approximate_age_of_oldest_message": {
+          "value": 720,
+          "unit": "seconds",
+          "threshold_warning": 300,
+          "threshold_critical": 600
+        },
+        "approximate_number_of_messages_visible": {
+          "value": 1250,
+          "unit": "count",
+          "threshold_warning": 500,
+          "threshold_critical": 1000
+        },
+        "approximate_number_of_messages_not_visible": {
+          "value": 245,
+          "unit": "count",
+          "threshold_warning": 100,
+          "threshold_critical": 200
+        }
+      }
+    }
+  ]
+}

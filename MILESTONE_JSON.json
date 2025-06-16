@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.0",
+  "service": "business",
+  "date": "2025-06-15",
+  "environment": "prod",
+  "domain": "milestones",
+  "readings": [
+    {
+      "collection_timestamp": "2025-06-15T08:30:00Z",
+      "process_name": "Deposit",
+      "metrics": {
+        "start_time": "2025-06-15T06:00:00Z",
+        "end_time": "2025-06-15T08:30:00Z",
+        "runtime_minutes": 150,
+        "sla_completion_time": "2025-06-15T08:00:00Z",
+        "sla_runtime_minutes": 120,
+        "completion_delay_minutes": 30,
+        "runtime_breach_minutes": 30,
+        "completion_status": "LATE",
+        "runtime_status": "BREACHED",
+        "business_impact": "medium",
+        "process_category": "core_banking",
+        "dependencies": ["marker_deposits", "overnight_feeds"]
+      }
+    },
+    {
+      "collection_timestamp": "2025-06-15T09:45:00Z",
+      "process_name": "DERIVATIVES",
+      "metrics": {
+        "start_time": "2025-06-15T07:30:00Z",
+        "end_time": "2025-06-15T09:45:00Z",
+        "runtime_minutes": 135,
+        "sla_completion_time": "2025-06-15T10:00:00Z",
+        "sla_runtime_minutes": 180,
+        "completion_delay_minutes": -15,
+        "runtime_breach_minutes": -45,
+        "completion_status": "EARLY",
+        "runtime_status": "UNDER_SLA",
+        "business_impact": "positive",
+        "process_category": "derivatives_processing",
+        "dependencies": ["GLOBAL-OTCRegDerivatives-EOD_Close", "GLOBAL-ExchangeTradedDerivatives-EOD_Close"]
+      }
+    },
+    {
+      "collection_timestamp": "2025-06-15T11:20:00Z",
+      "process_name": "COLLATERAL",
+      "metrics": {
+        "start_time": "2025-06-15T09:00:00Z",
+        "end_time": "2025-06-15T11:20:00Z",
+        "runtime_minutes": 140,
+        "sla_completion_time": "2025-06-15T11:00:00Z",
+        "sla_runtime_minutes": 150,
+        "completion_delay_minutes": 20,
+        "runtime_breach_minutes": -10,
+        "completion_status": "LATE",
+        "runtime_status": "UNDER_SLA",
+        "business_impact": "high",
+        "process_category": "risk_management",
+        "dependencies": ["GLOBAL-CCCCollateral-EOD_Close", "GLOBAL-MarketableCollateral-EOD_Close"]
+      }
+    },
+    {
+      "collection_timestamp": "2025-06-15T12:45:00Z",
+      "process_name": "SECURITIES",
+      "metrics": {
+        "start_time": "2025-06-15T10:30:00Z",
+        "end_time": "2025-06-15T12:45:00Z",
+        "runtime_minutes": 135,
+        "sla_completion_time": "2025-06-15T12:30:00Z",
+        "sla_runtime_minutes": 120,
+        "completion_delay_minutes": 15,
+        "runtime_breach_minutes": 15,
+        "completion_status": "LATE",
+        "runtime_status": "BREACHED",
+        "business_impact": "medium",
+        "process_category": "securities_processing",
+        "dependencies": ["GLOBAL-Security-EOD_Close"]
+      }
+    }
+  ],
+  "daily_summary": {
+    "total_processes": 4,
+    "completed_processes": 4,
+    "pending_processes": 8,
+    "on_time_completion": 1,
+    "late_completion": 3,
+    "runtime_sla_met": 2,
+    "runtime_sla_breached": 2,
+    "overall_completion_sla": 25.0,
+    "overall_runtime_sla": 50.0
+  }
+}
+
+
+-- Daily Milestone SLA Analysis
+WITH milestone_analysis AS (
+  SELECT 
+    r.value:collection_timestamp::timestamp as completion_time,
+    r.value:process_name::string as process_name,
+    r.value:metrics:start_time::timestamp as start_time,
+    r.value:metrics:end_time::timestamp as end_time,
+    r.value:metrics:runtime_minutes::int as actual_runtime,
+    r.value:metrics:sla_runtime_minutes::int as sla_runtime,
+    r.value:metrics:completion_delay_minutes::int as completion_delay,
+    r.value:metrics:completion_status::string as completion_status,
+    r.value:metrics:runtime_status::string as runtime_status,
+    r.value:metrics:business_impact::string as business_impact,
+    r.value:metrics:process_category::string as process_category
+  FROM business_metrics_table bmt,
+       LATERAL FLATTEN(input => bmt.readings) r
+  WHERE bmt.domain = 'milestones'
+    AND bmt.date = '2025-06-15'
+),
+
+process_dependencies AS (
+  -- Join with marker data to see if delays were caused by late markers
+  SELECT 
+    ma.*,
+    CASE 
+      WHEN completion_status = 'LATE' AND business_impact IN ('high', 'critical')
+      THEN 'CRITICAL_DELAY'
+      WHEN runtime_status = 'BREACHED'
+      THEN 'PERFORMANCE_ISSUE'
+      ELSE 'ACCEPTABLE'
+    END as escalation_level
+  FROM milestone_analysis ma
+)
+
+SELECT 
+  process_name,
+  process_category,
+  start_time,
+  completion_time,
+  actual_runtime,
+  sla_runtime,
+  completion_delay,
+  completion_status,
+  runtime_status,
+  business_impact,
+  escalation_level,
+  ROUND((actual_runtime::float / sla_runtime::float) * 100, 1) as runtime_efficiency_pct,
+  CASE 
+    WHEN escalation_level = 'CRITICAL_DELAY' 
+    THEN 'Investigate upstream dependencies and resource allocation'
+    WHEN escalation_level = 'PERFORMANCE_ISSUE'
+    THEN 'Review process optimization and infrastructure scaling'
+    ELSE 'Monitor for trends'
+  END as recommended_action
+FROM process_dependencies
+ORDER BY 
+  CASE escalation_level 
+    WHEN 'CRITICAL_DELAY' THEN 1 
+    WHEN 'PERFORMANCE_ISSUE' THEN 2 
+    ELSE 3 
+  END,
+  completion_delay DESC;

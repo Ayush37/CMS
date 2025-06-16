@@ -1,0 +1,126 @@
+s3://metrics-bucket/
+├── infra/
+│   ├── year=2025/month=06/day=15/service=eks/
+│   │   └── infra_metrics_2025-06-15.json
+│   ├── year=2025/month=06/day=15/service=lambda/
+│   │   └── infra_metrics_2025-06-15.json
+│   ├── year=2025/month=06/day=15/service=dynamodb/
+│   │   └── infra_metrics_2025-06-15.json
+│   ├── year=2025/month=06/day=15/service=sqs/
+│   │   └── infra_metrics_2025-06-15.json
+│   ├── year=2025/month=06/day=15/service=rds/
+│   │   └── infra_metrics_2025-06-15.json
+│   ├── year=2025/month=06/day=15/service=s3/
+│   │   └── infra_metrics_2025-06-15.json
+│   └── year=2025/month=06/day=15/service=emr/
+│       └── infra_metrics_2025-06-15.json
+├── business/
+│   ├── year=2025/month=06/day=15/domain=markers/
+│   │   └── business_metrics_2025-06-15.json
+│   ├── year=2025/month=06/day=15/domain=milestones/
+│   │   └── business_metrics_2025-06-15.json
+│   └── year=2025/month=06/day=15/domain=sla/
+│       └── business_metrics_2025-06-15.json
+└── archive/
+    ├── infra/
+    │   └── year=2024/month=12/day=31/
+    └── business/
+        └── year=2024/month=12/day=31/
+		
+		
+		
+{
+  // COMMON HEADER KEYS (used in ALL metric types)
+  "schema_version": "1.0",          // Version for schema evolution
+  "service": "rds",                 // AWS service name
+  "date": "2025-06-15",            // Date in YYYY-MM-DD format
+  "environment": "prod",            // Environment identifier
+  
+  // INFRA-SPECIFIC KEYS
+  "readings": [                     // Array of metric collections
+    {
+      "collection_timestamp": "2025-06-15T10:00:00Z",  // When metrics were collected
+      "product": "fgwrds-cluster",                     // Specific AWS resource name
+      "metrics": {                                     // Metric data object
+        "select_latency": {
+          "value": 15.2,                               // Actual metric value
+          "unit": "milliseconds",                      // Unit of measurement
+          "threshold_warning": 50,                     // Warning threshold
+          "threshold_critical": 100                    // Critical threshold
+        }
+      }
+    }
+  ]
+}
+
+
+{
+  // COMMON HEADER KEYS
+  "schema_version": "1.0",
+  "service": "business",
+  "date": "2025-06-15",
+  "environment": "prod",
+  
+  // BUSINESS-SPECIFIC KEYS
+  "domain": "markers",              // Business metric category
+  "readings": [                     // Usually single reading per day for markers
+    {
+      "collection_timestamp": "2025-06-15T06:45:00Z",
+      "metrics": {                  // Multiple markers in single collection
+        "GLOBAL-CCCCollateral-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T06:45:00Z",    // When marker arrived
+          "expected_arrival_time": "2025-06-15T06:30:00Z",  // When it should arrive
+          "sla_threshold_minutes": 30,                      // Allowable delay
+          "arrival_delay_minutes": 15,                      // Calculated delay
+          "sla_status": "BREACHED",                         // SLA compliance status
+          "business_impact": "medium",                      // Business criticality
+          "upstream_source": "CCC_System",                 // Source system
+          "data_category": "collateral"                    // Data classification
+        }
+      },
+      "summary": {                  // Daily aggregation
+        "total_markers": 8,
+        "breached_count": 4,
+        "overall_sla_compliance": 50.0
+      }
+    }
+  ]
+}
+
+
+{
+  // COMMON HEADER KEYS
+  "schema_version": "1.0",
+  "service": "business", 
+  "date": "2025-06-15",
+  "environment": "prod",
+  
+  // BUSINESS-SPECIFIC KEYS
+  "domain": "milestones",
+  "readings": [                     // Multiple readings as processes complete
+    {
+      "collection_timestamp": "2025-06-15T08:30:00Z",
+      "process_name": "Deposit",    // Specific batch process name
+      "metrics": {
+        "start_time": "2025-06-15T06:00:00Z",           // Process start
+        "end_time": "2025-06-15T08:30:00Z",             // Process completion
+        "runtime_minutes": 150,                         // Actual runtime
+        "sla_completion_time": "2025-06-15T08:00:00Z",  // SLA deadline
+        "sla_runtime_minutes": 120,                     // SLA runtime limit
+        "completion_delay_minutes": 30,                 // How late it finished
+        "runtime_breach_minutes": 30,                   // Runtime over SLA
+        "completion_status": "LATE",                    // Completion SLA status
+        "runtime_status": "BREACHED",                   // Runtime SLA status
+        "business_impact": "medium",                    // Business criticality
+        "process_category": "core_banking",             // Process classification
+        "dependencies": ["marker_deposits"]             // Upstream dependencies
+      }
+    }
+  ],
+  "daily_summary": {               // End-of-day aggregation
+    "total_processes": 12,
+    "completed_processes": 4,
+    "pending_processes": 8,
+    "overall_completion_sla": 25.0
+  }
+}

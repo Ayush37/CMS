@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.0",
+  "service": "business",
+  "date": "2025-06-15",
+  "environment": "prod",
+  "domain": "markers",
+  "readings": [
+    {
+      "collection_timestamp": "2025-06-15T06:45:00Z",
+      "metrics": {
+        "GLOBAL-CCCCollateral-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T06:45:00Z",
+          "expected_arrival_time": "2025-06-15T06:30:00Z",
+          "sla_threshold_minutes": 30,
+          "arrival_delay_minutes": 15,
+          "sla_status": "BREACHED",
+          "business_impact": "medium",
+          "upstream_source": "CCC_System",
+          "data_category": "collateral"
+        },
+        "GLOBAL-MarketableCollateral-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T06:28:00Z",
+          "expected_arrival_time": "2025-06-15T06:30:00Z",
+          "sla_threshold_minutes": 30,
+          "arrival_delay_minutes": -2,
+          "sla_status": "ON_TIME",
+          "business_impact": "low",
+          "upstream_source": "MarketData_System",
+          "data_category": "collateral"
+        },
+        "GLOBAL-OTCRegDerivatives-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T07:15:00Z",
+          "expected_arrival_time": "2025-06-15T06:45:00Z",
+          "sla_threshold_minutes": 45,
+          "arrival_delay_minutes": 30,
+          "sla_status": "BREACHED",
+          "business_impact": "high",
+          "upstream_source": "OTC_Derivatives_System",
+          "data_category": "derivatives"
+        },
+        "GLOBAL-BRKRACC-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T06:52:00Z",
+          "expected_arrival_time": "2025-06-15T06:50:00Z",
+          "sla_threshold_minutes": 20,
+          "arrival_delay_minutes": 2,
+          "sla_status": "ON_TIME",
+          "business_impact": "low",
+          "upstream_source": "Broker_Reconciliation_System",
+          "data_category": "reconciliation"
+        },
+        "GLOBAL-ExchangeTradedDerivatives-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T07:45:00Z",
+          "expected_arrival_time": "2025-06-15T07:00:00Z",
+          "sla_threshold_minutes": 60,
+          "arrival_delay_minutes": 45,
+          "sla_status": "BREACHED",
+          "business_impact": "critical",
+          "upstream_source": "Exchange_Data_System",
+          "data_category": "derivatives"
+        },
+        "GLOBAL-Security-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T06:35:00Z",
+          "expected_arrival_time": "2025-06-15T06:30:00Z",
+          "sla_threshold_minutes": 30,
+          "arrival_delay_minutes": 5,
+          "sla_status": "ON_TIME",
+          "business_impact": "low",
+          "upstream_source": "Securities_System",
+          "data_category": "securities"
+        },
+        "GLOBAL-SFT-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T06:25:00Z",
+          "expected_arrival_time": "2025-06-15T06:30:00Z",
+          "sla_threshold_minutes": 30,
+          "arrival_delay_minutes": -5,
+          "sla_status": "EARLY",
+          "business_impact": "positive",
+          "upstream_source": "SFT_System",
+          "data_category": "securities_financing"
+        },
+        "GLOBAL-FnOCollateral-EOD_Close": {
+          "actual_arrival_time": "2025-06-15T08:10:00Z",
+          "expected_arrival_time": "2025-06-15T07:30:00Z",
+          "sla_threshold_minutes": 45,
+          "arrival_delay_minutes": 40,
+          "sla_status": "BREACHED",
+          "business_impact": "high",
+          "upstream_source": "FnO_System",
+          "data_category": "collateral"
+        }
+      },
+      "summary": {
+        "total_markers": 8,
+        "on_time_count": 3,
+        "early_count": 1,
+        "breached_count": 4,
+        "critical_breaches": 1,
+        "high_impact_breaches": 2,
+        "overall_sla_compliance": 50.0
+      }
+    }
+  ]
+}
+
+
+-- MARKER SLA Breach Analysis
+WITH marker_analysis AS (
+  SELECT 
+    r.value:collection_timestamp::timestamp as collection_time,
+    m.key::string as marker_name,
+    m.value:actual_arrival_time::timestamp as actual_arrival,
+    m.value:expected_arrival_time::timestamp as expected_arrival,
+    m.value:sla_threshold_minutes::int as sla_threshold_min,
+    m.value:arrival_delay_minutes::int as delay_minutes,
+    m.value:sla_status::string as sla_status,
+    m.value:business_impact::string as business_impact,
+    m.value:upstream_source::string as upstream_source,
+    m.value:data_category::string as data_category
+  FROM business_metrics_table bmt,
+       LATERAL FLATTEN(input => bmt.readings) r,
+       LATERAL FLATTEN(input => r.value:metrics) m
+  WHERE bmt.domain = 'markers'
+    AND bmt.date = '2025-06-15'
+    AND m.value:sla_status::string = 'BREACHED'
+)
+
+SELECT 
+  marker_name,
+  actual_arrival,
+  expected_arrival,
+  delay_minutes,
+  sla_threshold_min,
+  ROUND((delay_minutes::float / sla_threshold_min::float) * 100, 1) as breach_severity_pct,
+  business_impact,
+  upstream_source,
+  data_category,
+  CASE 
+    WHEN business_impact = 'critical' THEN 'IMMEDIATE_ACTION_REQUIRED'
+    WHEN business_impact = 'high' THEN 'ESCALATE_TO_BUSINESS'
+    WHEN business_impact = 'medium' THEN 'MONITOR_CLOSELY'
+    ELSE 'INVESTIGATE'
+  END as recommended_action
+FROM marker_analysis
+ORDER BY 
+  CASE business_impact 
+    WHEN 'critical' THEN 1 
+    WHEN 'high' THEN 2 
+    WHEN 'medium' THEN 3 
+    ELSE 4 
+  END,
+  delay_minutes DESC;

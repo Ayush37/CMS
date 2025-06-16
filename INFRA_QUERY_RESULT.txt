@@ -1,0 +1,62 @@
+analysis_timestamp       | select_latency_ms | latency_threshold | cpu_utilization | select_latency_status | cpu_status | oldest_message_age_sec | msg_age_threshold | messages_visible | queue_threshold | message_age_status | queue_backlog_status | latency_breach_pct | queue_breach_pct
+------------------------|-------------------|-------------------|-----------------|----------------------|------------|----------------------|-------------------|------------------|-----------------|-------------------|--------------------|--------------------|------------------
+2025-06-15 10:00:00     | 15.2             | 100               | 45.8            | NORMAL               | NORMAL     | 45                   | 600               | 156              | 1000            | NORMAL             | NORMAL             | NULL               | NULL
+2025-06-15 10:15:00     | 89.4             | 100               | 78.2            | WARNING              | WARNING    | 425                  | 600               | 850              | 1000            | NORMAL             | NORMAL             | NULL               | NULL
+2025-06-15 10:30:00     | 125.6            | 100               | 88.2            | CRITICAL             | CRITICAL   | 720                  | 600               | 1250             | 1000            | CRITICAL           | CRITICAL           | 25.6               | 25.0
+2025-06-15 10:45:00     | 156.8            | 100               | 92.1            | CRITICAL             | CRITICAL   | 1080                 | 600               | 1456             | 1000            | CRITICAL           | CRITICAL           | 56.8               | 45.6
+2025-06-15 11:00:00     | 98.2             | 100               | 76.4            | WARNING              | WARNING    | 890                  | 600               | 1123             | 1000            | CRITICAL           | CRITICAL           | NULL               | 12.3
+
+
+Detailed Incident Analysis
+Incident Timeline & Root Cause Analysis:
+Issue Detection:
+
+First Anomaly: 10:15 AM - RDS select latency increased to 89.4ms (WARNING) with CPU at 78.2%
+Critical Escalation: 10:30 AM - Multiple systems in CRITICAL state
+Peak Impact: 10:45 AM - Worst performance across all metrics
+
+Root Cause Identified:
+PRIMARY: Database performance degradation leading to cascading SQS backup
+Evidence:
+
+10:15 AM: RDS latency started climbing (89.4ms) with CPU stress (78.2%)
+10:30 AM: RDS became CRITICAL (125.6ms latency, 88.2% CPU)
+10:30 AM: SQS queue immediately backed up (1,250 messages vs 1,000 threshold)
+10:30 AM: Message aging exceeded 720 seconds (20% above 600s threshold)
+
+Impact Severity:
+
+RDS Latency: 56.8% above critical threshold at peak
+SQS Queue Backup: 45.6% above critical capacity at peak
+Message Processing Delay: Messages aging 80% longer than acceptable
+
+Correlation Pattern:
+Time     | DB Status    | Queue Status  | Pattern
+---------|--------------|---------------|------------------
+10:00    | NORMAL       | NORMAL        | Baseline
+10:15    | WARNING      | NORMAL        | DB degradation starts
+10:30    | CRITICAL     | CRITICAL      | DB issues cause queue backup
+10:45    | CRITICAL     | CRITICAL      | Peak impact - both systems failing
+11:00    | WARNING      | CRITICAL      | DB recovering, queue still draining
+Business Impact:
+
+Duration: 45 minutes of degraded service
+Peak Breach: Database latency 156.8ms (56.8% above SLA)
+Queue Backup: 1,456 messages queued (45.6% over capacity)
+Processing Delay: Jobs delayed by 18+ minutes (1080 seconds oldest message)
+
+Recommended Actions:
+
+Immediate: Investigate database query performance at 10:15 AM
+Root Cause: Identify what caused the CPU spike (missing index, inefficient query, lock contention)
+Prevention: Implement early warning alerts at 70% CPU threshold
+Monitoring: Add correlation alerts between DB latency and queue aging
+
+Next Investigation Steps:
+
+Review database slow query logs from 10:10-10:20 AM
+Check for any deployments or configuration changes around 10:15 AM
+Analyze database lock wait events during the incident window
+Verify if any batch jobs or maintenance tasks were running
+
+This RCA clearly shows a database performance issue cascading to downstream queue processing failures, providing a clear starting point for deeper investigation.

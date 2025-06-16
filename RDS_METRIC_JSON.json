@@ -1,0 +1,128 @@
+{
+  "schema_version": "1.0",
+  "service": "rds",
+  "date": "2025-06-15",
+  "environment": "prod",
+  "readings": [
+    {
+      "collection_timestamp": "2025-06-15T10:00:00Z",
+      "product": "fgwrds-cluster",
+      "metrics": {
+        "select_latency": {
+          "value": 15.2,
+          "unit": "milliseconds",
+          "threshold_warning": 50,
+          "threshold_critical": 100
+        },
+        "cpu_utilization": {
+          "value": 45.8,
+          "unit": "percentage",
+          "threshold_warning": 70,
+          "threshold_critical": 85
+        },
+        "database_connections": {
+          "value": 125,
+          "unit": "count",
+          "threshold_warning": 200,
+          "threshold_critical": 250
+        },
+        "commit_latency": {
+          "value": 8.5,
+          "unit": "milliseconds",
+          "threshold_warning": 25,
+          "threshold_critical": 50
+        },
+        "delete_latency": {
+          "value": 12.3,
+          "unit": "milliseconds",
+          "threshold_warning": 30,
+          "threshold_critical": 60
+        },
+        "dml_latency": {
+          "value": 18.7,
+          "unit": "milliseconds",
+          "threshold_warning": 40,
+          "threshold_critical": 80
+        },
+        "insert_latency": {
+          "value": 22.1,
+          "unit": "milliseconds",
+          "threshold_warning": 35,
+          "threshold_critical": 70
+        },
+        "read_latency": {
+          "value": 14.8,
+          "unit": "milliseconds",
+          "threshold_warning": 30,
+          "threshold_critical": 60
+        },
+        "write_latency": {
+          "value": 19.4,
+          "unit": "milliseconds",
+          "threshold_warning": 35,
+          "threshold_critical": 70
+        }
+      }
+    },
+    {
+      "collection_timestamp": "2025-06-15T10:15:00Z",
+      "product": "fgwrds-cluster",
+      "metrics": {
+        "select_latency": {
+          "value": 125.6,
+          "unit": "milliseconds",
+          "threshold_warning": 50,
+          "threshold_critical": 100
+        },
+        "cpu_utilization": {
+          "value": 88.2,
+          "unit": "percentage",
+          "threshold_warning": 70,
+          "threshold_critical": 85
+        },
+        "database_connections": {
+          "value": 245,
+          "unit": "count",
+          "threshold_warning": 200,
+          "threshold_critical": 250
+        },
+        "commit_latency": {
+          "value": 42.1,
+          "unit": "milliseconds",
+          "threshold_warning": 25,
+          "threshold_critical": 50
+        },
+        "delete_latency": {
+          "value": 38.7,
+          "unit": "milliseconds",
+          "threshold_warning": 30,
+          "threshold_critical": 60
+        },
+        "dml_latency": {
+          "value": 95.3,
+          "unit": "milliseconds",
+          "threshold_warning": 40,
+          "threshold_critical": 80
+        },
+        "insert_latency": {
+          "value": 67.2,
+          "unit": "milliseconds",
+          "threshold_warning": 35,
+          "threshold_critical": 70
+        },
+        "read_latency": {
+          "value": 89.4,
+          "unit": "milliseconds",
+          "threshold_warning": 30,
+          "threshold_critical": 60
+        },
+        "write_latency": {
+          "value": 76.8,
+          "unit": "milliseconds",
+          "threshold_warning": 35,
+          "threshold_critical": 70
+        }
+      }
+    }
+  ]
+}
